@@ -218,6 +218,8 @@ class Internal extends RequestCollection
         $storyPoll = (isset($externalMetadata['story_polls']) && $targetFeed == Constants::FEED_STORY) ? $externalMetadata['story_polls'] : null;
         /** @var array Attached media used to share media to story feed. ONLY STORY MEDIA! */
         $attachedMedia = (isset($externalMetadata['attached_media']) && $targetFeed == Constants::FEED_STORY) ? $externalMetadata['attached_media'] : null;
+        /** @var array Product Tags to use for the media. ONLY FOR TIMELINE PHOTOS! */
+        $productTags = (isset($externalMetadata['product_tags']) && $targetFeed == Constants::FEED_TIMELINE) ? $externalMetadata['product_tags'] : null;
 
         // Fix very bad external user-metadata values.
         if (!is_string($captionText)) {
@@ -315,6 +317,12 @@ class Internal extends RequestCollection
                     $request
                         ->addPost('attached_media', json_encode($attachedMedia))
                         ->addPost('story_sticker_ids', 'media_simple_'.reset($attachedMedia)['media_id']);
+                }
+                break;
+                if ($productTags !== null) {
+                    $productTags = ['in' => $productTags]; // Wrap in container array.
+                    Utils::throwIfInvalidProductTags($productTags);
+                    $request->addPost('product_tags', json_encode($productTags));
                 }
                 break;
             case Constants::FEED_DIRECT_STORY:

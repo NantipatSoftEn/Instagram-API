@@ -433,6 +433,70 @@ class Utils
     }
 
     /**
+     * Verifies an array of product tags.
+     *
+     * Ensures that the input strictly contains the exact keys necessary for
+     * product tags, and with proper values for them. We cannot validate that the
+     * product's-id actually exist, but that's the job of the library user!
+     *
+     * @param array $productTags The array of usertags, optionally with the "in" or
+     *                           "removed" top-level keys holding the usertags. Example:
+     *                           ['in'=>[['position'=>[0.5,0.5],'product_id'=>'123'], ...]].
+     *
+     * @throws \InvalidArgumentException If any tags are invalid.
+     */
+    public static function throwIfInvalidProductTags(
+        array $productTags)
+    {
+        if (count($productTags) < 1) {
+            throw new \InvalidArgumentException('Empty product tags array.');
+        }
+
+        foreach ($productTags as $k => $v) {
+            if ($k === 'in' || $k === 'removed') {
+                if (!is_array($v)) {
+                    throw new \InvalidArgumentException(sprintf(
+                        'Invalid product tags array. The value for key "%s" must be an array.', $k
+                    ));
+                }
+
+                // Skip the section if it's empty.
+                if (count($v) < 1) {
+                    continue;
+                }
+
+                // Handle ['in'=>[...], 'removed'=>[...]] top-level keys since
+                // this input contained top-level array keys containing the usertags.
+                if ($k === 'in') {
+                    // Check the array of usertags to insert.
+                    self::throwIfInvalidProductTags($v);
+                } else { // 'removed'
+                    // Check the array of product_id to remove.
+                    foreach ($v as $productId) {
+                        if (!ctype_digit($productId) && (!is_int($productId) || $productId < 0)) {
+                            throw new \InvalidArgumentException('Invalid product ID in product tags "removed" array.');
+                        }
+                    }
+                }
+            } else {
+                // Verify this product tag entry, ensuring that the entry is format
+                // ['position'=>[0.0,1.0],'product_id'=>'123'] and nothing else.
+                if (!is_array($v) || count($v) != 2 || !isset($v['position'])
+                    || !is_array($v['position']) || count($v['position']) != 2
+                    || !isset($v['position'][0]) || !isset($v['position'][1])
+                    || (!is_int($v['position'][0]) && !is_float($v['position'][0]))
+                    || (!is_int($v['position'][1]) && !is_float($v['position'][1]))
+                    || $v['position'][0] < 0.0 || $v['position'][0] > 1.0
+                    || $v['position'][1] < 0.0 || $v['position'][1] > 1.0
+                    || !isset($v['product_id']) || !is_scalar($v['product_id'])
+                    || (!ctype_digit($v['product_id']) && (!is_int($v['product_id']) || $v['product_id'] < 0))) {
+                    throw new \InvalidArgumentException('Invalid product entry in product tags array.');
+                }
+            }
+        }
+    }
+
+    /**
      * Verifies that a single hashtag is valid.
      *
      * This function enforces the following requirements: It must be a string,
