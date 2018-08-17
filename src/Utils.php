@@ -384,7 +384,7 @@ class Utils
     public static function throwIfInvalidUsertags(
         array $usertags)
     {
-        if (count($usertags) < 1) {
+        if (empty($usertags)) {
             throw new \InvalidArgumentException('Empty usertags array.');
         }
 
@@ -397,7 +397,7 @@ class Utils
                 }
 
                 // Skip the section if it's empty.
-                if (count($v) < 1) {
+                if (empty($v)) {
                     continue;
                 }
 
@@ -417,13 +417,7 @@ class Utils
             } else {
                 // Verify this usertag entry, ensuring that the entry is format
                 // ['position'=>[0.0,1.0],'user_id'=>'123'] and nothing else.
-                if (!is_array($v) || count($v) != 2 || !isset($v['position'])
-                    || !is_array($v['position']) || count($v['position']) != 2
-                    || !isset($v['position'][0]) || !isset($v['position'][1])
-                    || (!is_int($v['position'][0]) && !is_float($v['position'][0]))
-                    || (!is_int($v['position'][1]) && !is_float($v['position'][1]))
-                    || $v['position'][0] < 0.0 || $v['position'][0] > 1.0
-                    || $v['position'][1] < 0.0 || $v['position'][1] > 1.0
+                if (self::throwIfInvalidPosition($v, 'user')
                     || !isset($v['user_id']) || !is_scalar($v['user_id'])
                     || (!ctype_digit($v['user_id']) && (!is_int($v['user_id']) || $v['user_id'] < 0))) {
                     throw new \InvalidArgumentException('Invalid user entry in usertags array.');
@@ -437,7 +431,7 @@ class Utils
      *
      * Ensures that the input strictly contains the exact keys necessary for
      * product tags, and with proper values for them. We cannot validate that the
-     * product's-id actually exist, but that's the job of the library user!
+     * product's-id actually exists, but that's the job of the library user!
      *
      * @param array $productTags The array of usertags, optionally with the "in" or
      *                           "removed" top-level keys holding the usertags. Example:
@@ -448,7 +442,7 @@ class Utils
     public static function throwIfInvalidProductTags(
         array $productTags)
     {
-        if (count($productTags) < 1) {
+        if (empty($productTags)) {
             throw new \InvalidArgumentException('Empty product tags array.');
         }
 
@@ -461,38 +455,78 @@ class Utils
                 }
 
                 // Skip the section if it's empty.
-                if (count($v) < 1) {
+                if (empty($v)) {
                     continue;
                 }
 
                 // Handle ['in'=>[...], 'removed'=>[...]] top-level keys since
-                // this input contained top-level array keys containing the usertags.
-                if ($k === 'in') {
-                    // Check the array of usertags to insert.
-                    self::throwIfInvalidProductTags($v);
-                } else { // 'removed'
-                    // Check the array of product_id to remove.
-                    foreach ($v as $productId) {
-                        if (!ctype_digit($productId) && (!is_int($productId) || $productId < 0)) {
-                            throw new \InvalidArgumentException('Invalid product ID in product tags "removed" array.');
+                // this input contained top-level array keys containing the product tags.
+                switch ($k) {
+                    case 'in':
+                        // Check the array of product tags to insert.
+                        self::throwIfInvalidProductTags($v);
+                        break;
+                    case 'removed':
+                        // Check the array of product_id to remove.
+                        foreach ($v as $productId) {
+                            if (!ctype_digit($productId) && (!is_int($productId) || $productId < 0)) {
+                                throw new \InvalidArgumentException('Invalid product ID in product tags "removed" array.');
+                            }
                         }
-                    }
+                        break;
+                    default:
+                        throw new \InvalidArgumentException(sprintf('Invalid key %s in product tags array.', $k));
                 }
             } else {
-                // Verify this product tag entry, ensuring that the entry is format
-                // ['position'=>[0.0,1.0],'product_id'=>'123'] and nothing else.
-                if (!is_array($v) || count($v) != 2 || !isset($v['position'])
-                    || !is_array($v['position']) || count($v['position']) != 2
-                    || !isset($v['position'][0]) || !isset($v['position'][1])
-                    || (!is_int($v['position'][0]) && !is_float($v['position'][0]))
-                    || (!is_int($v['position'][1]) && !is_float($v['position'][1]))
-                    || $v['position'][0] < 0.0 || $v['position'][0] > 1.0
-                    || $v['position'][1] < 0.0 || $v['position'][1] > 1.0
-                    || !isset($v['product_id']) || !is_scalar($v['product_id'])
-                    || (!ctype_digit($v['product_id']) && (!is_int($v['product_id']) || $v['product_id'] < 0))) {
-                    throw new \InvalidArgumentException('Invalid product entry in product tags array.');
-                }
+                self::throwIfInvalidProductTag($v);
             }
+        }
+    }
+
+    /**
+     * Verifies a product tag.
+     *
+     * Ensures that the input strictly contains the exact keys necessary for
+     * product tag, and with proper values for them. We cannot validate that the
+     * product-id actually exists, but that's the job of the library user!
+     *
+     * @param array $productTag The array containing the product ID and the tag position.
+     *                          Example: ['position'=>[0.5,0.5],'product_id'=>'123'].
+     *
+     * @throws \InvalidArgumentException If any tags are invalid.
+     */
+    public static function throwIfInvalidProductTag(
+        $productTag)
+    {
+        // Verify this product tag entry, ensuring that the entry is format
+        // ['position'=>[0.0,1.0],'product_id'=>'123'] and nothing else.
+        if (self::throwIfInvalidPosition($productTag, 'product')
+            || !isset($productTag['product_id']) || !is_scalar($productTag['product_id'])
+            || (!ctype_digit($productTag['product_id']) && (!is_int($productTag['product_id']) || $productTag['product_id'] < 0))) {
+            throw new \InvalidArgumentException('Invalid product entry in product tags array.');
+        }
+    }
+
+    /**
+     * Verifies a position.
+     *
+     * @param string $position Array containing a position array.
+     * @param string $type     What type of position tag is. user or product.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public static function throwIfInvalidPosition(
+        $position,
+        $type)
+    {
+        if (!is_array($position) || count($position) != 2 || !isset($position['position'])
+            || !is_array($position['position']) || count($position['position']) != 2
+            || !isset($position['position'][0]) || !isset($position['position'][1])
+            || (!is_int($position['position'][0]) && !is_float($position['position'][0]))
+            || (!is_int($position['position'][1]) && !is_float($position['position'][1]))
+            || $position['position'][0] < 0.0 || $position['position'][0] > 1.0
+            || $position['position'][1] < 0.0 || $position['position'][1] > 1.0) {
+            throw new \InvalidArgumentException(sprintf('Invalid position entry in %s tags array.', $type));
         }
     }
 

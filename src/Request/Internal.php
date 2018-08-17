@@ -320,7 +320,6 @@ class Internal extends RequestCollection
                 }
                 break;
                 if ($productTags !== null) {
-                    $productTags = ['in' => $productTags]; // Wrap in container array.
                     Utils::throwIfInvalidProductTags($productTags);
                     $request->addPost('product_tags', json_encode($productTags));
                 }

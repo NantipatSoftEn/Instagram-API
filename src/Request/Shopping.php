@@ -10,7 +10,7 @@ use InstagramAPI\Response;
 class Shopping extends RequestCollection
 {
     /**
-     * Get on tag products information.
+     * Get on tag product information.
      *
      * @param string $productId   The product ID.
      * @param string $mediaId     The media ID in Instagram's internal format (ie "1820978425064383299").
@@ -28,17 +28,13 @@ class Shopping extends RequestCollection
         return $this->ig->request("commerce/products/{$productId}/on_tag/")
             ->addParam('media_id', $mediaId)
             ->addParam('device_width', $deviceWidth)
-            ->addPost('_uid', $this->ig->account_id)
-            ->addPost('_uuid', $this->ig->uuid)
-            ->addPost('_csrftoken', $this->ig->client->getToken())
             ->getResponse(new Response\OnTagProductsResponse());
     }
 
     /**
      * Sets on board catalog.
      *
-     * @param string $productsId
-     * @param mixed  $catalogId
+     * @param string $catalogId
      *
      * @throws \InstagramAPI\Exception\InstagramException
      *
