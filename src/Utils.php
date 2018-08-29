@@ -417,8 +417,13 @@ class Utils
             } else {
                 // Verify this usertag entry, ensuring that the entry is format
                 // ['position'=>[0.0,1.0],'user_id'=>'123'] and nothing else.
-                if (self::throwIfInvalidPosition($v, 'user')
-                    || !isset($v['user_id']) || !is_scalar($v['user_id'])
+                try {
+                    self::throwIfInvalidPosition($v);
+                } catch (\InvalidArgumentException $e) {
+                    throw new \InvalidArgumentException(sprintf('Invalid user tag position: %s', $e->getMessage()), $e->getCode(), $e);
+                }
+
+                if (!isset($v['user_id']) || !is_scalar($v['user_id'])
                     || (!ctype_digit($v['user_id']) && (!is_int($v['user_id']) || $v['user_id'] < 0))) {
                     throw new \InvalidArgumentException('Invalid user entry in usertags array.');
                 }
@@ -447,38 +452,28 @@ class Utils
         }
 
         foreach ($productTags as $k => $v) {
-            if ($k === 'in' || $k === 'removed') {
-                if (!is_array($v)) {
-                    throw new \InvalidArgumentException(sprintf(
-                        'Invalid product tags array. The value for key "%s" must be an array.', $k
-                    ));
-                }
+            // Skip the section if it's empty.
+            if (empty($v)) {
+                continue;
+            }
 
-                // Skip the section if it's empty.
-                if (empty($v)) {
-                    continue;
-                }
-
-                // Handle ['in'=>[...], 'removed'=>[...]] top-level keys since
-                // this input contained top-level array keys containing the product tags.
-                switch ($k) {
-                    case 'in':
-                        // Check the array of product tags to insert.
-                        self::throwIfInvalidProductTags($v);
-                        break;
-                    case 'removed':
-                        // Check the array of product_id to remove.
-                        foreach ($v as $productId) {
-                            if (!ctype_digit($productId) && (!is_int($productId) || $productId < 0)) {
-                                throw new \InvalidArgumentException('Invalid product ID in product tags "removed" array.');
-                            }
+            // Handle ['in'=>[...], 'removed'=>[...]] top-level keys since
+            // this input contained top-level array keys containing the product tags.
+            switch ($k) {
+                case 'in':
+                    // Check the array of product tags to insert.
+                    self::throwIfInvalidProductTags($v);
+                    break;
+                case 'removed':
+                    // Check the array of product_id to remove.
+                    foreach ($v as $productId) {
+                        if (!ctype_digit($productId) && (!is_int($productId) || $productId < 0)) {
+                            throw new \InvalidArgumentException('Invalid product ID in product tags "removed" array.');
                         }
-                        break;
-                    default:
-                        throw new \InvalidArgumentException(sprintf('Invalid key %s in product tags array.', $k));
-                }
-            } else {
-                self::throwIfInvalidProductTag($v);
+                    }
+                    break;
+                default:
+                    throw new \InvalidArgumentException(sprintf('Invalid key %s in product tags array.', $k));
             }
         }
     }
@@ -498,12 +493,30 @@ class Utils
     public static function throwIfInvalidProductTag(
         $productTag)
     {
+        $requiredKeys = ['position', 'product_id'];
+        $missingKeys = array_keys(array_diff_key(['position' => 1, 'product_id' => 1], $productTag));
+
+        if (count($missingKeys)) {
+            throw new \InvalidArgumentException(sprintf('Missing keys "%s" for product tag array.', implode(', ', $missingKeys)));
+        }
+
         // Verify this product tag entry, ensuring that the entry is format
         // ['position'=>[0.0,1.0],'product_id'=>'123'] and nothing else.
-        if (self::throwIfInvalidPosition($productTag, 'product')
-            || !isset($productTag['product_id']) || !is_scalar($productTag['product_id'])
-            || (!ctype_digit($productTag['product_id']) && (!is_int($productTag['product_id']) || $productTag['product_id'] < 0))) {
-            throw new \InvalidArgumentException('Invalid product entry in product tags array.');
+        try {
+            self::throwIfInvalidPosition($productTag);
+        } catch (\InvalidArgumentException $e) {
+            throw new \InvalidArgumentException(sprintf('Invalid product tag position: %s', $e->getMessage()), $e->getCode(), $e);
+        }
+
+        if (!isset($productTag['product_id'])) {
+            throw new \InvalidArgumentException('Product ID is required.');
+        }
+        $productId = $productTag['product_id'];
+
+        if (!ctype_digit($productTag['product_id']) && !is_int($productId)) {
+            throw new \InvalidArgumentException('Product ID must be an integer.');
+        } elseif ($productId < 0) {
+            throw new \InvalidArgumentException('Product ID must be a positive integer.');
         }
     }
 
@@ -511,22 +524,36 @@ class Utils
      * Verifies a position.
      *
      * @param string $position Array containing a position array.
-     * @param string $type     What type of position tag is. user or product.
      *
      * @throws \InvalidArgumentException
      */
     public static function throwIfInvalidPosition(
-        $position,
-        $type)
+        $position)
     {
-        if (!is_array($position) || count($position) != 2 || !isset($position['position'])
-            || !is_array($position['position']) || count($position['position']) != 2
-            || !isset($position['position'][0]) || !isset($position['position'][1])
-            || (!is_int($position['position'][0]) && !is_float($position['position'][0]))
-            || (!is_int($position['position'][1]) && !is_float($position['position'][1]))
-            || $position['position'][0] < 0.0 || $position['position'][0] > 1.0
-            || $position['position'][1] < 0.0 || $position['position'][1] > 1.0) {
-            throw new \InvalidArgumentException(sprintf('Invalid position entry in %s tags array.', $type));
+        if (!isset($position['position'])) {
+            throw new \InvalidArgumentException('Postion array is required.');
+        } else {
+            $position = $position['position'];
+        }
+
+        if (!isset($position[0])) {
+            throw new \InvalidArgumentException('X coordinate is required.');
+        }
+        $x = $position[0];
+        if (!is_int($x) || !is_float($x)) {
+            throw new \InvalidArgumentException('X coordinate must be a number.');
+        } elseif ($x < 0.0 || $x > 1.0) {
+            throw new \InvalidArgumentException('X coordinate must be a float between 0.0 and 1.0.');
+        }
+
+        if (!isset($position[1])) {
+            throw new \InvalidArgumentException('Y coordinate is required.');
+        }
+        $y = $position[1];
+        if (!is_int($y) || !is_float($y)) {
+            throw new \InvalidArgumentException('Y coordinate must be a number.');
+        } elseif ($y < 0.0 || $y > 1.0) {
+            throw new \InvalidArgumentException('Y coordinate must be a float between 0.0 and 1.0.');
         }
     }
 
