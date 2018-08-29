@@ -18,9 +18,9 @@ class Shopping extends RequestCollection
      *
      * @throws \InstagramAPI\Exception\InstagramException
      *
-     * @return \InstagramAPI\Response\OnTagProductsResponse
+     * @return \InstagramAPI\Response\OnTagProductResponse
      */
-    public function getOnTagProductsInfo(
+    public function getOnTagProductInfo(
         $productId,
         $mediaId,
         $deviceWidth = 720)
@@ -28,7 +28,7 @@ class Shopping extends RequestCollection
         return $this->ig->request("commerce/products/{$productId}/on_tag/")
             ->addParam('media_id', $mediaId)
             ->addParam('device_width', $deviceWidth)
-            ->getResponse(new Response\OnTagProductsResponse());
+            ->getResponse(new Response\OnTagProductResponse());
     }
 
     /**

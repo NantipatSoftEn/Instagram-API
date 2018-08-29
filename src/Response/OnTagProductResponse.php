@@ -5,7 +5,7 @@ namespace InstagramAPI\Response;
 use InstagramAPI\Response;
 
 /**
- * OnTagProductsResponse.
+ * OnTagProductResponse.
  *
  * @method mixed getMessage()
  * @method Model\Product getProductItem()
@@ -28,7 +28,7 @@ use InstagramAPI\Response;
  * @method $this unsetUser()
  * @method $this unset_Messages()
  */
-class OnTagProductsResponse extends Response
+class OnTagProductResponse extends Response
 {
     const JSON_PROPERTY_MAP = [
         'product_item'       => 'Model\Product',
