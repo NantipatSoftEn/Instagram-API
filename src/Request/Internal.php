@@ -273,6 +273,11 @@ class Internal extends RequestCollection
                     $request->addPost('usertags', json_encode($usertags));
                 }
                 break;
+                if ($productTags !== null) {
+                    Utils::throwIfInvalidProductTags($productTags);
+                    $request->addPost('product_tags', json_encode($productTags));
+                }
+                break;
             case Constants::FEED_STORY:
                 $request
                     ->addPost('client_shared_at', (string) time())
@@ -317,11 +322,6 @@ class Internal extends RequestCollection
                     $request
                         ->addPost('attached_media', json_encode($attachedMedia))
                         ->addPost('story_sticker_ids', 'media_simple_'.reset($attachedMedia)['media_id']);
-                }
-                break;
-                if ($productTags !== null) {
-                    Utils::throwIfInvalidProductTags($productTags);
-                    $request->addPost('product_tags', json_encode($productTags));
                 }
                 break;
             case Constants::FEED_DIRECT_STORY:
