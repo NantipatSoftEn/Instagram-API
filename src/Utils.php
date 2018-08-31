@@ -462,7 +462,9 @@ class Utils
             switch ($k) {
                 case 'in':
                     // Check the array of product tags to insert.
-                    self::throwIfInvalidProductTags($v);
+                    foreach ($v as $productTag) {
+                        self::throwIfInvalidProductTag($productTag);
+                    }
                     break;
                 case 'removed':
                     // Check the array of product_id to remove.
@@ -540,7 +542,7 @@ class Utils
             throw new \InvalidArgumentException('X coordinate is required.');
         }
         $x = $position[0];
-        if (!is_int($x) || !is_float($x)) {
+        if (!is_int($x) && !is_float($x)) {
             throw new \InvalidArgumentException('X coordinate must be a number.');
         } elseif ($x < 0.0 || $x > 1.0) {
             throw new \InvalidArgumentException('X coordinate must be a float between 0.0 and 1.0.');
@@ -550,7 +552,7 @@ class Utils
             throw new \InvalidArgumentException('Y coordinate is required.');
         }
         $y = $position[1];
-        if (!is_int($y) || !is_float($y)) {
+        if (!is_int($y) && !is_float($y)) {
             throw new \InvalidArgumentException('Y coordinate must be a number.');
         } elseif ($y < 0.0 || $y > 1.0) {
             throw new \InvalidArgumentException('Y coordinate must be a float between 0.0 and 1.0.');
