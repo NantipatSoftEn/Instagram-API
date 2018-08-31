@@ -32,6 +32,36 @@ class Shopping extends RequestCollection
     }
 
     /**
+     * Get catalog items.
+     *
+     * @param string $locale The device user's locale, such as "en_US.
+     *
+     * @throws \InstagramAPI\Exception\InstagramException
+     *
+     * @return \InstagramAPI\Response\GraphqlResponse
+     */
+    public function getCatalogItems(
+        $locale = 'en_US')
+    {
+        $query = [
+            '0' => '',
+            '1' => '250240772390503',
+            '2' => '96',
+            '3' => '20',
+            '4' => null,
+        ];
+
+        return $this->ig->request('wwwgraphql/ig/query/')
+            ->addUnsignedPost('doc_id', '1747750168640998')
+            ->addUnsignedPost('locale', $locale)
+            ->addUnsignedPost('vc_policy', 'default')
+            ->addUnsignedPost('strip_nulls', true)
+            ->addUnsignedPost('strip_defaults', true)
+            ->addUnsignedPost('query_params', json_encode($query), JSON_FORCE_OBJECT)
+            ->getResponse(new Response\GraphqlResponse());
+    }
+
+    /**
      * Sets on board catalog.
      *
      * @param string $catalogId
