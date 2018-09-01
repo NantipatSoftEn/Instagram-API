@@ -57,7 +57,7 @@ class Shopping extends RequestCollection
             ->addUnsignedPost('vc_policy', 'default')
             ->addUnsignedPost('strip_nulls', true)
             ->addUnsignedPost('strip_defaults', true)
-            ->addUnsignedPost('query_params', json_encode($query), JSON_FORCE_OBJECT)
+            ->addUnsignedPost('query_params', json_encode($query, JSON_FORCE_OBJECT))
             ->getResponse(new Response\GraphqlResponse());
     }
 
