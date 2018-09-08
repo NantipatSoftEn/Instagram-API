@@ -44,11 +44,11 @@ class Shopping extends RequestCollection
         $locale = 'en_US')
     {
         $query = [
-            '0' => '',
-            '1' => '250240772390503',
-            '2' => '96',
-            '3' => '20',
-            '4' => null,
+            '',
+            '250240772390503',
+            '96',
+            '20',
+            null,
         ];
 
         return $this->ig->request('wwwgraphql/ig/query/')
