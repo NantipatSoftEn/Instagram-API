@@ -271,7 +271,6 @@ class Internal extends RequestCollection
                     Utils::throwIfInvalidUsertags($usertags);
                     $request->addPost('usertags', json_encode($usertags));
                 }
-                break;
                 if ($productTags !== null) {
                     Utils::throwIfInvalidProductTags($productTags);
                     $request->addPost('product_tags', json_encode($productTags));
