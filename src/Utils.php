@@ -369,64 +369,118 @@ class Utils
     }
 
     /**
+     * Verifies a user tag.
+     *
+     * Ensures that the input strictly contains the exact keys necessary for
+     * user tag, and with proper values for them. We cannot validate that the
+     * user-id actually exists, but that's the job of the library user!
+     *
+     * @param mixed $userTag An array containing the user ID and the tag position.
+     *                       Example: ['position'=>[0.5,0.5],'user_id'=>'123'].
+     *
+     * @throws \InvalidArgumentException If the tag is invalid.
+     */
+    public static function throwIfInvalidUserTag(
+        $userTag)
+    {
+        // NOTE: We can use "array" typehint, but it doesn't give us enough freedom.
+        if (!is_array($userTag)) {
+            throw new \InvalidArgumentException('User tag must be an array.');
+        }
+
+        // Check for required keys.
+        $requiredKeys = ['position', 'user_id'];
+        $missingKeys = array_diff($requiredKeys, array_keys($userTag));
+        if (!empty($missingKeys)) {
+            throw new \InvalidArgumentException(sprintf('Missing keys "%s" for user tag array.', implode('", "', $missingKeys)));
+        }
+
+        // Verify this product tag entry, ensuring that the entry is format
+        // ['position'=>[0.0,1.0],'user_id'=>'123'] and nothing else.
+        foreach ($userTag as $key => $value) {
+            switch ($key) {
+                case 'user_id':
+                    if (!is_int($value) && !ctype_digit($value)) {
+                        throw new \InvalidArgumentException('User ID must be an integer.');
+                    }
+                    if ($value < 0) {
+                        throw new \InvalidArgumentException('User ID must be a positive integer.');
+                    }
+                    break;
+                case 'position':
+                    try {
+                        self::throwIfInvalidPosition($value);
+                    } catch (\InvalidArgumentException $e) {
+                        throw new \InvalidArgumentException(sprintf('Invalid user tag position: %s', $e->getMessage()), $e->getCode(), $e);
+                    }
+                    break;
+                default:
+                    throw new \InvalidArgumentException(sprintf('Invalid key "%s" in user tag array.', $key));
+            }
+        }
+    }
+
+    /**
      * Verifies an array of media usertags.
      *
      * Ensures that the input strictly contains the exact keys necessary for
      * usertags, and with proper values for them. We cannot validate that the
      * user-id's actually exist, but that's the job of the library user!
      *
-     * @param array $usertags The array of usertags, optionally with the "in" or
+     * @param mixed $usertags The array of usertags, optionally with the "in" or
      *                        "removed" top-level keys holding the usertags. Example:
      *                        ['in'=>[['position'=>[0.5,0.5],'user_id'=>'123'], ...]].
      *
      * @throws \InvalidArgumentException If any tags are invalid.
      */
     public static function throwIfInvalidUsertags(
-        array $usertags)
+        $usertags)
     {
+        // NOTE: We can use "array" typehint, but it doesn't give us enough freedom.
+        if (!is_array($usertags)) {
+            throw new \InvalidArgumentException('Usertags must be an array.');
+        }
+
         if (empty($usertags)) {
             throw new \InvalidArgumentException('Empty usertags array.');
         }
 
         foreach ($usertags as $k => $v) {
-            if ($k === 'in' || $k === 'removed') {
-                if (!is_array($v)) {
-                    throw new \InvalidArgumentException(sprintf(
-                        'Invalid usertags array. The value for key "%s" must be an array.', $k
-                    ));
-                }
-
-                // Skip the section if it's empty.
-                if (empty($v)) {
-                    continue;
-                }
-
-                // Handle ['in'=>[...], 'removed'=>[...]] top-level keys since
-                // this input contained top-level array keys containing the usertags.
-                if ($k === 'in') {
-                    // Check the array of usertags to insert.
-                    self::throwIfInvalidUsertags($v);
-                } else { // 'removed'
+            if (!is_array($v)) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Invalid usertags array. The value for key "%s" must be an array.', $k
+                ));
+            }
+            // Skip the section if it's empty.
+            if (empty($v)) {
+                continue;
+            }
+            // Handle ['in'=>[...], 'removed'=>[...]] top-level keys since
+            // this input contained top-level array keys containing the usertags.
+            switch ($k) {
+                case 'in':
+                    foreach ($v as $idx => $userTag) {
+                        try {
+                            self::throwIfInvalidUserTag($userTag);
+                        } catch (\InvalidArgumentException $e) {
+                            throw new \InvalidArgumentException(
+                                sprintf('Invalid usertag at index "%d": %s', $idx, $e->getMessage()),
+                                $e->getCode(),
+                                $e
+                            );
+                        }
+                    }
+                    break;
+                case 'removed':
                     // Check the array of userids to remove.
                     foreach ($v as $userId) {
                         if (!ctype_digit($userId) && (!is_int($userId) || $userId < 0)) {
                             throw new \InvalidArgumentException('Invalid user ID in usertags "removed" array.');
                         }
                     }
-                }
-            } else {
-                // Verify this usertag entry, ensuring that the entry is format
-                // ['position'=>[0.0,1.0],'user_id'=>'123'] and nothing else.
-                try {
-                    self::throwIfInvalidPosition($v);
-                } catch (\InvalidArgumentException $e) {
-                    throw new \InvalidArgumentException(sprintf('Invalid user tag position: %s', $e->getMessage()), $e->getCode(), $e);
-                }
-
-                if (!isset($v['user_id']) || !is_scalar($v['user_id'])
-                    || (!ctype_digit($v['user_id']) && (!is_int($v['user_id']) || $v['user_id'] < 0))) {
-                    throw new \InvalidArgumentException('Invalid user entry in usertags array.');
-                }
+                    break;
+                default:
+                    throw new \InvalidArgumentException(sprintf('Invalid key "%s" in user tags array.', $k));
             }
         }
     }
@@ -438,20 +492,31 @@ class Utils
      * product tags, and with proper values for them. We cannot validate that the
      * product's-id actually exists, but that's the job of the library user!
      *
-     * @param array $productTags The array of usertags, optionally with the "in" or
+     * @param mixed $productTags The array of usertags, optionally with the "in" or
      *                           "removed" top-level keys holding the usertags. Example:
      *                           ['in'=>[['position'=>[0.5,0.5],'product_id'=>'123'], ...]].
      *
      * @throws \InvalidArgumentException If any tags are invalid.
      */
     public static function throwIfInvalidProductTags(
-        array $productTags)
+        $productTags)
     {
+        // NOTE: We can use "array" typehint, but it doesn't give us enough freedom.
+        if (!is_array($productTags)) {
+            throw new \InvalidArgumentException('Products tags must be an array.');
+        }
+
         if (empty($productTags)) {
             throw new \InvalidArgumentException('Empty product tags array.');
         }
 
         foreach ($productTags as $k => $v) {
+            if (!is_array($v)) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Invalid product tags array. The value for key "%s" must be an array.', $k
+                ));
+            }
+
             // Skip the section if it's empty.
             if (empty($v)) {
                 continue;
@@ -462,8 +527,16 @@ class Utils
             switch ($k) {
                 case 'in':
                     // Check the array of product tags to insert.
-                    foreach ($v as $productTag) {
-                        self::throwIfInvalidProductTag($productTag);
+                    foreach ($v as $idx => $productTag) {
+                        try {
+                            self::throwIfInvalidProductTag($productTag);
+                        } catch (\InvalidArgumentException $e) {
+                            throw new \InvalidArgumentException(
+                                sprintf('Invalid product tag at index "%d": %s', $idx, $e->getMessage()),
+                                $e->getCode(),
+                                $e
+                            );
+                        }
                     }
                     break;
                 case 'removed':
@@ -475,7 +548,7 @@ class Utils
                     }
                     break;
                 default:
-                    throw new \InvalidArgumentException(sprintf('Invalid key %s in product tags array.', $k));
+                    throw new \InvalidArgumentException(sprintf('Invalid key "%s" in product tags array.', $k));
             }
         }
     }
@@ -487,7 +560,7 @@ class Utils
      * product tag, and with proper values for them. We cannot validate that the
      * product-id actually exists, but that's the job of the library user!
      *
-     * @param array $productTag The array containing the product ID and the tag position.
+     * @param mixed $productTag An array containing the product ID and the tag position.
      *                          Example: ['position'=>[0.5,0.5],'product_id'=>'123'].
      *
      * @throws \InvalidArgumentException If any tags are invalid.
@@ -495,47 +568,55 @@ class Utils
     public static function throwIfInvalidProductTag(
         $productTag)
     {
-        $requiredKeys = ['position', 'product_id'];
-        $missingKeys = array_keys(array_diff_key(['position' => 1, 'product_id' => 1], $productTag));
+        // NOTE: We can use "array" typehint, but it doesn't give us enough freedom.
+        if (!is_array($productTag)) {
+            throw new \InvalidArgumentException('Product tag must be an array.');
+        }
 
-        if (count($missingKeys)) {
-            throw new \InvalidArgumentException(sprintf('Missing keys "%s" for product tag array.', implode(', ', $missingKeys)));
+        // Check for required keys.
+        $requiredKeys = ['position', 'product_id'];
+        $missingKeys = array_diff($requiredKeys, array_keys($productTag));
+        if (!empty($missingKeys)) {
+            throw new \InvalidArgumentException(sprintf('Missing keys "%s" for product tag array.', implode('", "', $missingKeys)));
         }
 
         // Verify this product tag entry, ensuring that the entry is format
         // ['position'=>[0.0,1.0],'product_id'=>'123'] and nothing else.
-        try {
-            self::throwIfInvalidPosition($productTag);
-        } catch (\InvalidArgumentException $e) {
-            throw new \InvalidArgumentException(sprintf('Invalid product tag position: %s', $e->getMessage()), $e->getCode(), $e);
-        }
-
-        if (!isset($productTag['product_id'])) {
-            throw new \InvalidArgumentException('Product ID is required.');
-        }
-        $productId = $productTag['product_id'];
-
-        if (!ctype_digit($productTag['product_id']) && !is_int($productId)) {
-            throw new \InvalidArgumentException('Product ID must be an integer.');
-        } elseif ($productId < 0) {
-            throw new \InvalidArgumentException('Product ID must be a positive integer.');
+        foreach ($productTag as $key => $value) {
+            switch ($key) {
+                case 'product_id':
+                    if (!is_int($value) && !ctype_digit($value)) {
+                        throw new \InvalidArgumentException('Product ID must be an integer.');
+                    }
+                    if ($value < 0) {
+                        throw new \InvalidArgumentException('Product ID must be a positive integer.');
+                    }
+                    break;
+                case 'position':
+                    try {
+                        self::throwIfInvalidPosition($value);
+                    } catch (\InvalidArgumentException $e) {
+                        throw new \InvalidArgumentException(sprintf('Invalid product tag position: %s', $e->getMessage()), $e->getCode(), $e);
+                    }
+                    break;
+                default:
+                    throw new \InvalidArgumentException(sprintf('Invalid key "%s" in product tag array.', $key));
+            }
         }
     }
 
     /**
      * Verifies a position.
      *
-     * @param string $position Array containing a position array.
+     * @param mixed $position An array containing a position coordinates.
      *
      * @throws \InvalidArgumentException
      */
     public static function throwIfInvalidPosition(
         $position)
     {
-        if (!isset($position['position'])) {
-            throw new \InvalidArgumentException('Postion array is required.');
-        } else {
-            $position = $position['position'];
+        if (!is_array($position)) {
+            throw new \InvalidArgumentException('Position must be an array.');
         }
 
         if (!isset($position[0])) {
@@ -544,7 +625,8 @@ class Utils
         $x = $position[0];
         if (!is_int($x) && !is_float($x)) {
             throw new \InvalidArgumentException('X coordinate must be a number.');
-        } elseif ($x < 0.0 || $x > 1.0) {
+        }
+        if ($x < 0.0 || $x > 1.0) {
             throw new \InvalidArgumentException('X coordinate must be a float between 0.0 and 1.0.');
         }
 
@@ -554,7 +636,8 @@ class Utils
         $y = $position[1];
         if (!is_int($y) && !is_float($y)) {
             throw new \InvalidArgumentException('Y coordinate must be a number.');
-        } elseif ($y < 0.0 || $y > 1.0) {
+        }
+        if ($y < 0.0 || $y > 1.0) {
             throw new \InvalidArgumentException('Y coordinate must be a float between 0.0 and 1.0.');
         }
     }

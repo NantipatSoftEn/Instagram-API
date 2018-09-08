@@ -268,7 +268,6 @@ class Internal extends RequestCollection
                     ->addPost('upload_id', $uploadId);
 
                 if ($usertags !== null) {
-                    $usertags = ['in' => $usertags]; // Wrap in container array.
                     Utils::throwIfInvalidUsertags($usertags);
                     $request->addPost('usertags', json_encode($usertags));
                 }
